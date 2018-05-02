@@ -15,12 +15,15 @@
 
 #include <GL/gl.h>
 #include <vector>
+#include <stack>
 #include <algorithm>
-#include <math.h>
+#include <cmath>
 
 #define RADIAN(x) ((x)*M_PI/180.0)
 
 using namespace std;
+
+class CollisionManager;
 
 //Encapsulates Vertex data
 class Vertex {
@@ -50,7 +53,7 @@ public:
 
     void render(int x, int y);
 
-    static Element *loadElements(char *file_location, int &n);
+    Element *softCopy();
 
     static void destroyAll();
 };
@@ -58,22 +61,50 @@ public:
 
 // Root class for all objects in model
 class Model {
+    class CollisionManager {
+        vector<vector<int>> buff;
+        vector<Model *> *staticModels, *dynamicModels;
+        stack<int> codes, dHitTracker, sHitTracker;
+        int maxCodeSize;
+        vector<vector<bool>> approxGrid;
+
+        void toApproxGrid(int x, int y, int &gx, int &gy);
+
+    public:
+        CollisionManager(vector<Model *> *, vector<Model *> *);
+
+        void login(Model *model);
+
+        void logout(Model *model);
+
+        void push(Model *model);
+
+        void pop(Model *model);
+
+        void fullCheck();
+
+        bool unsafe(int x, int y);
+
+        vector<vector<bool>> *makeGrid();
+    };
+
 protected:
+    static int deadCount, maxDeadCount;
+    int nE, health;
+    vector<Element *> *elements;
+    bool active, hide;
+public:
+    int hl, hr, ht, hb, hCode;
+    bool static_model;
     static vector<Model *> staticModels;
     static vector<Model *> dynamicModels;
-    static int deadCount, maxDeadCount;
-    int nE;
-    vector<Element *> *elements;
-    bool active, hide, static_model;
-    GLint x, y, w, h;
-public:
+    static CollisionManager coolMan;
+
     Model(int localOriginX, int localOriginY, bool isStaticModel, bool hide);
 
-    void detectDimensions();
+    void adjustHitbox(Element *);
 
     void destroy();
-
-    bool loadElements(char *file_location);
 
     void addElement(Element *element);
 
@@ -81,7 +112,9 @@ public:
 
     virtual void render();
 
-    bool hit(Model *model);
+    virtual void onHit() ;
+
+    Model *softCopy();
 
     static void renderStatic();
 
@@ -92,6 +125,10 @@ public:
     static void nextFrame();
 
     static void destroyAll();
+
+
+    GLint y;
+    GLint x;
 };
 
 bool insideView(int x, int y);

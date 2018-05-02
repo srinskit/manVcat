@@ -6,13 +6,18 @@
 #ifndef MANVCAT_TANK_H
 #define MANVCAT_TANK_H
 
+#include <queue>
 #include "Model.h"
 #include "Bullet.h"
+#include "Common.h"
+#include "AutoPilot.h"
 
 class Tank : public Model {
     int bodyAngle, barrelExcess;
-
 public:
+    queue<char> actionQ;
+    stack<Cell *> moveStack;
+    bool autoMove = false;
     vector<Element *> *barrelElements;
     vector<Element *> *bodyElements;
 
@@ -34,6 +39,11 @@ public:
 
     void update() override;
 
+    void onHit() override;
+
+    stack<Cell *> autoPilot(int, int);
+
+    void autoMoveEnable();
 };
 
 #endif //MANVCAT_TANK_H

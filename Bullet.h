@@ -8,6 +8,8 @@
 
 #include "Model.h"
 
+extern Element *bulletElement;
+
 class Bullet : public Model {
     int vx, vy, theta;
 public:

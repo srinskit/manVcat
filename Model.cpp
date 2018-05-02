@@ -15,6 +15,8 @@
 #include <GL/gl.h>
 #include <vector>
 #include <algorithm>
+#include <cstdio>
+#include "Common.h"
 
 #define RADIAN(x) ((x)*M_PI/180.0)
 
@@ -56,61 +58,64 @@ void Element::render(int x, int y) {
     glTranslatef(-x, -y, 0);
 }
 
-Element *Element::loadElements(char *file_location, int &n) {
-
+Element *Element::softCopy() {
+    auto element = new Element(nV, v, glShape);
+    element->setColor(r, g, b);
+    return element;
 }
 
 void Element::destroyAll() {
-    for (auto it = elementStore.begin(); it < elementStore.end(); ++it) {
-        delete ((*it)->v);
-        delete (*it);
+    for (auto &it : elementStore) {
+        delete (it->v);
+        delete it;
     }
 }
 
-int Model::deadCount = 0, Model::maxDeadCount = 10;
+int Model::deadCount = 0, Model::maxDeadCount = 20;
 vector<Model *> Model::staticModels, Model::dynamicModels;
+Model::CollisionManager Model::coolMan(&Model::staticModels, &Model::dynamicModels);
 
 Model::Model(int localOriginX, int localOriginY, bool isStaticModel, bool hide) {
     x = localOriginX, y = localOriginY, static_model = isStaticModel;
     elements = nullptr;
-    w = h = nE = 0;
+    nE = 0;
+    hl = hr = 0;
+    ht = hb = 0;
     this->active = true;
     this->hide = hide;
+    health = 0;
+    hCode = 0;
     if (static_model)
         staticModels.push_back(this);
     else
         dynamicModels.push_back(this);
+    coolMan.login(this);
+    coolMan.push(this);
 }
 
-void Model::detectDimensions() {
-    GLint minX = x, maxX = x, minY = y, maxY = y;
-    for (auto it = elements->begin(); it < elements->end(); ++it)
-        for (auto v = (*it)->v; v < (*it)->v + (*it)->nV; ++v) {
-            minX = min(minX, v->x);
-            minY = min(minX, v->y);
-            maxX = max(minX, v->x);
-            maxY = max(minX, v->y);
-        }
-    w = maxX - minX;
-    h = maxY - minY;
+void Model::adjustHitbox(Element *element) {
+    for (auto v = element->v; v < element->v + element->nV; ++v) {
+        hl = min(hl, v->x);
+        hr = max(hr, v->x);
+        hb = min(hb, v->y);
+        ht = max(ht, v->y);
+    }
 }
 
-bool Model::hit(Model *model) {
-    int xt = model->x, yt = model->x, wt = model->x, ht = model->x;
-    int dx = (wt + w) / 2, dy = (ht + h) / 2;
-    return (-dx < xt - x || xt - x < dx) && (-dy < yt - y || yt - y < dy);
+Model *Model::softCopy() {
+    auto clone = new Model(x, y, static_model, hide);
+    clone->elements = elements;
+    clone->nE = nE;
+    return clone;
 }
 
 void Model::destroy() {
+    coolMan.logout(this);
     active = false;
     if (elements != nullptr)
         delete (elements);
     elements = nullptr;
     ++deadCount;
-}
-
-bool Model::loadElements(char *file_location) {
-    return true;
 }
 
 void Model::addElement(Element *element) {
@@ -120,6 +125,9 @@ void Model::addElement(Element *element) {
     sort(elements->begin(), elements->end(), [](const Element *e1, const Element *e2) {
         return e1->layer < e2->layer;
     });
+    coolMan.pop(this);
+    adjustHitbox(element);
+    coolMan.push(this);
 }
 
 void Model::update() {
@@ -135,33 +143,36 @@ void Model::render() {
 
 
 void Model::renderStatic() {
-    for (auto it = staticModels.begin(); it < staticModels.end(); ++it) {
-        if (!(*it)->active) continue;
-        if ((*it)->hide) continue;
-        (*it)->render();
+    for (auto &staticModel : staticModels) {
+        if (!staticModel->active) continue;
+        if (staticModel->hide) continue;
+        staticModel->render();
     }
 }
 
 void Model::renderDynamic() {
-    for (auto it = dynamicModels.begin(); it < dynamicModels.end(); ++it) {
-        if (!(*it)->active) continue;
-        (*it)->update();
-        if ((*it)->hide) continue;
-        (*it)->render();
+    for (auto &dynamicModel : dynamicModels) {
+        if (dynamicModel == nullptr) continue;
+        if (!dynamicModel->active) continue;
+        coolMan.pop(dynamicModel);
+        dynamicModel->update();
+        coolMan.push(dynamicModel);
+        if (dynamicModel->hide) continue;
+        dynamicModel->render();
     }
 }
 
 void Model::cleanRenderQueue() {
-    for (auto it = staticModels.begin(); it < staticModels.end(); ++it)
-        if (!(*it)->active) {
-            delete *it;
-            *it = nullptr;
+    for (auto &staticModel : staticModels)
+        if (!staticModel->active) {
+            delete staticModel;
+            staticModel = nullptr;
         }
 
-    for (auto it = dynamicModels.begin(); it < dynamicModels.end(); ++it)
-        if (!(*it)->active) {
-            delete *it;
-            *it = nullptr;
+    for (auto &dynamicModel : dynamicModels)
+        if (!dynamicModel->active) {
+            delete dynamicModel;
+            dynamicModel = nullptr;
         }
     staticModels.erase(
             remove_if(staticModels.begin(), staticModels.end(), [](Model *model) { return model == nullptr; }),
@@ -172,23 +183,32 @@ void Model::cleanRenderQueue() {
 }
 
 void Model::nextFrame() {
+    coolMan.fullCheck();
     if (deadCount > maxDeadCount)
         cleanRenderQueue();
 }
 
 void Model::destroyAll() {
-    for (auto it = staticModels.begin(); it < staticModels.end(); ++it)
-        if (!(*it)->active)
-            delete *it;
-    for (auto it = dynamicModels.begin(); it < dynamicModels.end(); ++it)
-        if (!(*it)->active)
-            delete *it;
+    for (auto &staticModel : staticModels)
+        if (!staticModel->active)
+            delete staticModel;
+    for (auto &dynamicModel : dynamicModels)
+        if (!dynamicModel->active)
+            delete dynamicModel;
     staticModels.clear();
     dynamicModels.clear();
     deadCount = 0;
 }
 
+void Model::onHit() {
+    health--;
+    if (health <= 0) {
+        coolMan.pop(this);
+        destroy();
+    }
+}
+
+
 bool insideView(int x, int y) {
-    int width = 800, height = 800;
-    return x > -width / 2 && x < width / 2 && y > -height / 2 && y < height / 2;
+    return x >= 0 && x <= worldWidth && y >= 0 && y < worldHeight;
 }

@@ -3,8 +3,12 @@
     Created on 11 April 2018.
 */
 #include "Tank.h"
-
-extern Element *bulletElement;
+#include "Common.h"
+#include <queue>
+#include <climits>
+#include <cstdio>
+#include "Graphics.h"
+#include "AutoPilot.h"
 
 Tank::Tank(int localOriginX, int localOriginY, bool isStaticModel, bool hide)
         : Model(localOriginX, localOriginY, isStaticModel, hide) {
@@ -19,6 +23,9 @@ void Tank::addBodyElement(Element *element) {
     sort(bodyElements->begin(), bodyElements->end(), [](const Element *e1, const Element *e2) {
         return e1->layer < e2->layer;
     });
+    coolMan.pop(this);
+    adjustHitbox(element);
+    coolMan.push(this);
 }
 
 void Tank::addBarrelElement(Element *element) {
@@ -28,6 +35,9 @@ void Tank::addBarrelElement(Element *element) {
     sort(barrelElements->begin(), barrelElements->end(), [](const Element *e1, const Element *e2) {
         return e1->layer < e2->layer;
     });
+    coolMan.pop(this);
+    adjustHitbox(element);
+    coolMan.push(this);
 }
 
 void Tank::turn(int dir) {
@@ -75,6 +85,71 @@ void Tank::fire() {
 }
 
 void Tank::update() {
+    if (!actionQ.empty()) {
+        switch (actionQ.front()) {
+            case 'w':
+                move(+1);
+                break;
+            case 'a':
+                turn(+1);
+                break;
+            case 's':
+                move(-1);
+                break;
+            case 'd':
+                turn(-1);
+                break;
+            case 'j':
+                rotate(+1);
+                break;
+            case 'k':
+                fire();
+                break;
+            case 'l':
+                rotate(-1);
+                break;
+            case 'c':
+                autoMove = false;
+                while (!moveStack.empty())
+                    moveStack.pop();
+                break;
+            default:
+                break;
+        }
+        actionQ.pop();
+    }
+    if (autoMove && !moveStack.empty()) {
+        Cell *cell = moveStack.top();
+        int xt = cell->gridx, yt = cell->gridy;
+        gridToWorld(xt, yt);
+        if (x < xt)
+            x++;
+        if (x > xt)
+            x--;
+        if (y < yt)
+            y++;
+        if (y > yt)
+            y--;
+        if (x == xt && y == yt) {
+            delete cell;
+            moveStack.pop();
+        }
+        if (moveStack.empty())
+            autoMove = false;
+    }
+}
 
+void Tank::onHit() {
+
+}
+
+void Tank::autoMoveEnable() {
+    autoMove = true;
+}
+
+stack<Cell *> Tank::autoPilot(int gridx, int gridy) {
+    int gx = x, gy = y;
+    worldToGrid(gx, gy);
+    return moveStack = autoPilotG(gx, gy, gridx, gridy);
 }
 

@@ -3,13 +3,15 @@
     Created on 11 April 2018.
 */
 #include "Bullet.h"
-#include <math.h>
+#include "Common.h"
+#include <cmath>
 
 const int Bullet::v = 8;
 
 Bullet::Bullet(int localOriginX, int localOriginY, bool isStaticModel, bool hide)
         : Model(localOriginX, localOriginY, isStaticModel, hide) {
     vx = 0, vy = 0, theta = 0;
+    health = 1;
 }
 
 void Bullet::launch(int theta, int x, int y) {

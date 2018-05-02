@@ -9,15 +9,19 @@
 #include "Model.h"
 
 class Cat : public Model {
+    bool autoMove;
+    int tgx, tgy;
 public:
 
     Cat(int localOriginX, int localOriginY, bool isStaticModel, bool hide);
 
+    void setAutoMove(bool);
 
-    void spawn(int x, int y);
-
-
-    void update() override;
+    void update();
 };
+
+void loadCatMod();
+
+void unloadCatMod();
 
 #endif //MANVCAT_CAT_H
