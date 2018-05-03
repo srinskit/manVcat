@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cstdio>
 #include "Common.h"
+#include "Graphics.h"
 
 #define RADIAN(x) ((x)*M_PI/180.0)
 
@@ -51,11 +52,12 @@ void Element::loadColor() {
 }
 
 void Element::render(int x, int y) {
-    glTranslatef(x, y, 0);
+    myPushMatrix();
+    myTranslatef(x, y, 0);
     loadColor();
-    glVertexPointer(2, GL_INT, sizeof(Vertex), v);
-    glDrawArrays(glShape, 0, nV);
-    glTranslatef(-x, -y, 0);
+    myVertexPointer(2, GL_INT, sizeof(Vertex), v);
+    myDrawArrays(glShape, 0, nV);
+    myPopMatrix();
 }
 
 Element *Element::softCopy() {
@@ -177,8 +179,9 @@ void Model::cleanRenderQueue() {
     staticModels.erase(
             remove_if(staticModels.begin(), staticModels.end(), [](Model *model) { return model == nullptr; }),
             staticModels.end());
-    dynamicModels.erase(remove_if(dynamicModels.begin(), dynamicModels.end(),
-                                  [](Model *model) { return model == nullptr; }), dynamicModels.end());
+    dynamicModels.erase(
+            remove_if(dynamicModels.begin(), dynamicModels.end(), [](Model *model) { return model == nullptr; }),
+            dynamicModels.end());
     deadCount = 0;
 }
 
@@ -206,6 +209,7 @@ void Model::onHit() {
         coolMan.pop(this);
         destroy();
     }
+    score++;
 }
 
 

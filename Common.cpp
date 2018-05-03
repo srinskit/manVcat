@@ -11,7 +11,7 @@ int worldWidth = 800;
 int nCellsX = 10, nCellsY = 10;
 int cellWidth = worldWidth / nCellsX;
 int cellHeight = worldHeight / nCellsX;
-
+int score = 0;
 int screenWidth, screenHeight;
 
 void limitX(int &x) {

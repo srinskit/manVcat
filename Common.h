@@ -12,6 +12,8 @@ extern int worldWidth;
 extern int worldHeight;
 extern int cellWidth, cellHeight, nCellsX, nCellsY;
 extern int screenWidth, screenHeight;
+extern int score;
+extern int win;
 
 void limitX(int &);
 

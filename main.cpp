@@ -17,7 +17,7 @@
 
 int win;
 extern Tank *mainTank;
-
+int nBullets = 0;
 int gridx, gridy, drawGridCount = 0, drawPath = 0;
 bool autoMove = false;
 stack<Cell *> moveStack, tmpStack;
@@ -59,11 +59,11 @@ void display() {
         if (drawPath <= 0)
             mainTank->autoMoveEnable();
     }
-    if (!moveStack.empty()) {
-        auto node = moveStack.top();
-        auto theta = atan2(node->gridy * cellHeight + cellHeight / 2 - mainTank->y,
-                           node->gridx * cellHeight + cellWidth / 2 - mainTank->x);
-    }
+//    if (!moveStack.empty()) {
+//        auto node = moveStack.top();
+//        auto theta = atan2(node->gridy * cellHeight + cellHeight / 2 - mainTank->y,
+//                           node->gridx * cellHeight + cellWidth / 2 - mainTank->x);
+//    }
     glutSwapBuffers();
 
 }
@@ -88,6 +88,7 @@ void deInitOpenGl() {
 void onKeyPressed(unsigned char key, int x1, int y1) {
     switch (key) {
         case 'q':
+            printf("Score: %d!", max(0, score));
             glutDestroyWindow(win);
             break;
         case 'w':
@@ -95,9 +96,14 @@ void onKeyPressed(unsigned char key, int x1, int y1) {
         case 's':
         case 'd':
         case 'j':
-        case 'k':
         case 'l':
             mainTank->actionQ.push(key);
+            break;
+        case 'k':
+            if (nBullets < 30) {
+                mainTank->actionQ.push(key);
+                nBullets++;
+            }
             break;
         default:
             break;

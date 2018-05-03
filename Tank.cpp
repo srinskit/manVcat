@@ -7,13 +7,17 @@
 #include <queue>
 #include <climits>
 #include <cstdio>
+#include <GL/glut.h>
 #include "Graphics.h"
 #include "AutoPilot.h"
+
+#define DEGREE(x) ((x)*180/M_PI)
 
 Tank::Tank(int localOriginX, int localOriginY, bool isStaticModel, bool hide)
         : Model(localOriginX, localOriginY, isStaticModel, hide) {
     bodyAngle = barrelExcess = 0;
     barrelElements = bodyElements = nullptr;
+    health = 7;
 }
 
 void Tank::addBodyElement(Element *element) {
@@ -63,18 +67,16 @@ void Tank::rotate(int dir) {
 
 void Tank::render() {
     if (bodyElements == nullptr || barrelElements == nullptr) return;
-    glTranslated(x, y, 0);
-    glRotated(bodyAngle, 0, 0, 1);
+    myPushMatrix();
+    myRotated(bodyAngle, 0, 0, 1);
     for (auto it = bodyElements->begin(); it < bodyElements->end(); ++it) {
-        (*it)->render(0, 0);
+        (*it)->render(x, y);
     }
-    glRotated(barrelExcess, 0, 0, 1);
+    myRotated(barrelExcess, 0, 0, 1);
     for (auto it = barrelElements->begin(); it < barrelElements->end(); ++it) {
-        (*it)->render(0, 0);
+        (*it)->render(x, y);
     }
-    glRotated(-bodyAngle - barrelExcess, 0, 0, 1);
-    glTranslated(-x, -y, 0);
-
+    myPopMatrix();
 }
 
 void Tank::fire() {
@@ -89,15 +91,27 @@ void Tank::update() {
         switch (actionQ.front()) {
             case 'w':
                 move(+1);
+                autoMove = false;
+                while (!moveStack.empty())
+                    moveStack.pop();
                 break;
             case 'a':
                 turn(+1);
+                autoMove = false;
+                while (!moveStack.empty())
+                    moveStack.pop();
                 break;
             case 's':
                 move(-1);
+                autoMove = false;
+                while (!moveStack.empty())
+                    moveStack.pop();
                 break;
             case 'd':
                 turn(-1);
+                autoMove = false;
+                while (!moveStack.empty())
+                    moveStack.pop();
                 break;
             case 'j':
                 rotate(+1);
@@ -122,14 +136,28 @@ void Tank::update() {
         Cell *cell = moveStack.top();
         int xt = cell->gridx, yt = cell->gridy;
         gridToWorld(xt, yt);
-        if (x < xt)
-            x++;
-        if (x > xt)
-            x--;
-        if (y < yt)
-            y++;
-        if (y > yt)
-            y--;
+        auto theta = (int) (-90 + DEGREE(atan2(yt - y, xt - x)));
+        if (theta < 0) theta += 360;
+        if (bodyAngle < theta) {
+            if (theta - bodyAngle < 360 - (theta - bodyAngle))
+                bodyAngle = (bodyAngle + 1) % 360;
+            else
+                bodyAngle = (bodyAngle - 1 + 360) % 360;
+        } else if (bodyAngle > theta) {
+            if (bodyAngle - theta < 360 - (bodyAngle - theta))
+                bodyAngle = (bodyAngle - 1 + 360) % 360;
+            else
+                bodyAngle = (bodyAngle + 1) % 360;
+        } else {
+            if (x < xt)
+                x++;
+            if (x > xt)
+                x--;
+            if (y < yt)
+                y++;
+            if (y > yt)
+                y--;
+        }
         if (x == xt && y == yt) {
             delete cell;
             moveStack.pop();
@@ -140,7 +168,12 @@ void Tank::update() {
 }
 
 void Tank::onHit() {
-
+    health--;
+    if (health <= 0) {
+        coolMan.pop(this);
+        destroy();
+    }
+    score -= 8;
 }
 
 void Tank::autoMoveEnable() {

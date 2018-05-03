@@ -86,6 +86,7 @@ vector<vector<bool>> *Model::CollisionManager::makeGrid() {
 void Model::CollisionManager::fullCheck() {
     for (auto i = 0; i < dynamicModels->size(); ++i) {
         auto model = (*dynamicModels)[i];
+        if (model == nullptr)continue;
         if (model->hCode < 0 || !model->active) continue;
         int yb = model->y + model->hb, yt = model->y + model->ht, xl = model->x + model->hl, xr = model->x + model->hr;
         limitY(yb);
@@ -105,6 +106,7 @@ void Model::CollisionManager::fullCheck() {
     if (!dHitTracker.empty()) {
         for (auto i = 0; i < staticModels->size(); ++i) {
             auto model = (*staticModels)[i];
+            if (model == nullptr)continue;
             if (model->hCode < 0 || !model->active) continue;
             int yb = model->y + model->hb, yt = model->y + model->ht, xl = model->x + model->hl, xr =
                     model->x + model->hr;
