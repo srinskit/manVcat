@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
     glutInitWindowSize(worldWidth, worldHeight);
     glutInitWindowPosition(2000, 0);
     win = glutCreateWindow("manVcat");
-    glutFullScreen();
+//    glutFullScreen();
     initOpenGL();
     glutKeyboardFunc(onKeyPressed);
     glutMouseFunc(onMouseClick);
